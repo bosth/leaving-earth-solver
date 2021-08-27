@@ -20,6 +20,8 @@ def add_path_stats(paths):
 
 def find_best_paths(src, dst, path_filter="optimal", one_stage=False):
     paths = find_paths(src, dst, one_stage)
+    if not paths:
+        return []
     paths = add_path_stats(paths)
     paths = sorted(paths, key=lambda i: i[0]) # sort by total difficulty
     if path_filter != "all":

@@ -46,11 +46,11 @@ class Range(click.ParamType):
 def find_best(missions, minimize):
     missions = [mission for mission in missions if mission]
     if minimize == "time":
-        return sorted(missions, key=lambda x: x["components"]["time"])
+        return sorted(missions, key=lambda x: x.get("time", 0))
     if minimize == "cost":
-        return sorted(missions, key=lambda x: x["cost"])
+        return sorted(missions, key=lambda x: x.get("cost", 0))
     if minimize == "mass":
-        return sorted(missions, key=lambda x: x["mass"])
+        return sorted(missions, key=lambda x: x.get("mass", 0))
 
 @click.command()
 @click.version_option(__version__)
@@ -65,7 +65,7 @@ def find_best(missions, minimize):
 @click.option("-c", "--cost", type=Range(), default=None, help="Cost of mission")
 @click.option("--free-ions", type=click.IntRange(min=0), default=0, help="Number of Ion thrusters available at the origin")
 @click.option("-m", "--minimize", type=click.Choice(["time","cost","mass"], case_sensitive=False), default="cost", help="Minimization goal")
-@click.option("--routes", type=click.Choice(["optimal","all","one"], case_sensitive=False), default="one", help="Which routes to try when there are multiple options")
+@click.option("--routes", type=click.Choice(["optimal","all","one"], case_sensitive=False), default="optimal", help="Which routes to try when there are multiple options")
 @click.option("--one-stage", is_flag=True, help="Always check a single stage configuration for launches from Earth (by default assume a two-stage configuration)")
 @click.option("--rendezvous/--no-rendezvous", default=True, help="If rendezvous technology is available, Ion thrusters will be detached when no longer needed")
 @click.argument("orig", required=True, metavar="ORIGIN")
