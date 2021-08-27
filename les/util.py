@@ -23,7 +23,7 @@ def required(juno, atlas, soyuz, proton, saturn, ion, diff, load):
 def thrust(juno=0, atlas=0, soyuz=0, proton=0, saturn=0, ion=0, time=0):
     return juno*JUN_THRUST + atlas*ATL_THRUST + soyuz*SYZ_THRUST + proton*PRT_THRUST + saturn*SAT_THRUST + ion*ION_THRUST*time
 
-def mass(juno, atlas, soyuz, proton, saturn, ion, time=None):
+def mass(juno=0, atlas=0, soyuz=0, proton=0, saturn=0, ion=0, time=None):
     return juno*JUN_WEIGHT + atlas*ATL_WEIGHT + soyuz*SYZ_WEIGHT + proton*PRT_WEIGHT + saturn*SAT_WEIGHT + ion*ION_WEIGHT
 
 def cost(juno=0, atlas=0, soyuz=0, proton=0, saturn=0, ion=0, time=None, free_ions=0):

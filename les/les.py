@@ -30,16 +30,15 @@ class Planner():
     #    return []
 
     def _find_ion_detach_maneuvers(self, route):
-        if not self.rendezvous:
-            return []
-
-        rendezvous_actions = []
-        for maneuver in route:
-            if maneuver.time is False:
-                rendezvous_actions.append(maneuver)
-            else:
-                rendezvous_actions.reverse()
-                return rendezvous_actions
+        if self.rendezvous:
+            rendezvous_actions = []
+            for maneuver in route:
+                if maneuver.time is False:
+                    rendezvous_actions.append(maneuver)
+                else:
+                    rendezvous_actions.reverse()
+                    return rendezvous_actions
+        return []
 
     def _plan(self, route, minimize=None):
         solver = Optimize()
@@ -135,20 +134,14 @@ class Planner():
         plan = []
         for i, stage in enumerate(route):
             plan.append({"origin": stage.src.name, "destination": stage.dst.name, "difficulty": stage.diff, "components": {}})
-        components = {
-            "juno": 0,
-            "atlas": 0,
-            "soyuz": 0,
-            "proton": 0,
-            "saturn": 0,
-            "ion": 0,
-            "time": 0
-        }
+        components = {}
+        t_time = 0
         mission = {}
         ions = 0
         for i in model:
             component = i.name()
             count = model[i].as_long()
+
             if component == "ion" and count:
                 components[component] = count
             elif count:
@@ -157,18 +150,18 @@ class Planner():
                 stage = plan[stageid]
                 if component == "time":
                     stage["time"] = count
+                    t_time += count
                 else:
                     c = stage.get("components", {})
                     c[component] = count
                     stage["components"] = c
-                
-                if components.get(component):
-                    components[component] += count
-                else:
-                    components[component] = count
+                    if components.get(component):
+                        components[component] += count
+                    else:
+                        components[component] = count
 
         for i, stage in enumerate(route):
-            ions = components["ion"]
+            ions = components.get("ion", 0)
             if ion_detach_maneuvers and stage == ion_detach_maneuvers[0] and ions > 0:
                 plan[i]["rendezvous"] = [{"detach": ["ion", ions]}]
             elif "time" in plan[i] and ions > 0:
@@ -181,5 +174,6 @@ class Planner():
         mission["payload"] = self.load
         mission["mass"] = t_mass
         mission["cost"] = t_cost
+        mission["time"] = t_time
         mission["plan"] = plan
         return mission
