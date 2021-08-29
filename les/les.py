@@ -2,6 +2,7 @@ from z3 import Optimize, Int, Or, If, unsat
 from .util import required, thrust, mass, cost, ION_COST, ION_WEIGHT
 
 DEFAULT_COMPONENT_MAX=8
+DEFAULT_TIME_MAX=16
 RNG=(0,DEFAULT_COMPONENT_MAX)
 
 class Planner():

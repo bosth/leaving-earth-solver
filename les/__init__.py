@@ -1,5 +1,5 @@
 from .__version__ import __version__
-from .les import Planner, DEFAULT_COMPONENT_MAX
+from .les import Planner, DEFAULT_COMPONENT_MAX, DEFAULT_TIME_MAX
 from .location import Locations, EEso, EEo, EsoEo
 import statistics
 
@@ -27,9 +27,11 @@ def find_best_paths(src, dst, path_filter="optimal", one_stage=False):
     if path_filter != "all":
             threshold = paths[0][0] * 1.2 # allow slightly higher difficulty paths than the least difficult
             paths = [p for p in paths if p[0] <= threshold]
+            paths = sorted(paths, key=lambda i: i[1]) # sort by stdev/mean or whatever technique we used for stats
             if path_filter == "one":
-                paths = sorted(paths, key=lambda i: i[1]) # sort by stdev/mean or whatever technique we used for stats
                 paths = paths[:1]
+            elif path_filter == "two":
+                paths = paths[:2]
     paths = [p[2] for p in paths]
     if one_stage:
         two_stage_paths = []

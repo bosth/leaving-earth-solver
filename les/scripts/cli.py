@@ -1,6 +1,6 @@
 import click
 from les import __version__
-from les import Planner, find_best_paths, Locations, DEFAULT_COMPONENT_MAX
+from les import Planner, find_best_paths, Locations, DEFAULT_COMPONENT_MAX, DEFAULT_TIME_MAX
 import logging
 import re
 import json
@@ -25,7 +25,7 @@ class Range(click.ParamType):
         if m:
             value = value.strip("+")
             value = int(value)
-            return (value, DEFAULT_COMPONENT_MAX)
+            return (value, 900)
 
         m = re.match("^[0-9]-[0-9]*$", value) # range
         if m:
@@ -61,16 +61,16 @@ def find_best(missions, minimize):
 @click.option("-p", "--proton", type=Range(), default="0-{}".format(DEFAULT_COMPONENT_MAX), help="Number of Proton rockets")
 @click.option("-n", "--saturn", type=Range(), default="0-{}".format(DEFAULT_COMPONENT_MAX), help="Number of Saturn rockets")
 @click.option("-i", "--ion", type=Range(), default="0-{}".format(DEFAULT_COMPONENT_MAX), help="Number of Ion thrusters")
-@click.option("-y", "--time", type=Range(), default="0-{}".format(DEFAULT_COMPONENT_MAX), help="Number of time tokens")
+@click.option("-y", "--time", type=Range(), default="0-{}".format(DEFAULT_TIME_MAX), help="Number of time tokens")
 @click.option("-c", "--cost", type=Range(), default=None, help="Cost of mission")
 @click.option("--free-ions", type=click.IntRange(min=0), default=0, help="Number of Ion thrusters available at the origin")
 @click.option("-m", "--minimize", type=click.Choice(["time","cost","mass"], case_sensitive=False), default="cost", help="Minimization goal")
-@click.option("--routes", type=click.Choice(["optimal","all","one"], case_sensitive=False), default="optimal", help="Which routes to try when there are multiple options")
+@click.option("--routes", type=click.Choice(["optimal","all","one", "two"], case_sensitive=False), default="two", help="Which routes to try when there are multiple options")
 @click.option("--one-stage", is_flag=True, help="Always check a single stage configuration for launches from Earth (by default assume a two-stage configuration)")
 @click.option("--rendezvous/--no-rendezvous", default=True, help="If rendezvous technology is available, Ion thrusters will be detached when no longer needed")
 @click.argument("orig", required=True, metavar="ORIGIN")
 @click.argument("dest", required=True, metavar="DESTINATION")
-@click.argument("payload", type=click.IntRange(min=0, max=None), default=1)
+@click.argument("payload", type=click.IntRange(min=1, max=None), default=1)
 def cli(verbose, juno, atlas, soyuz, proton, saturn, ion, time, cost, free_ions, minimize, routes, one_stage, rendezvous, orig, dest, payload):
     """
     """
