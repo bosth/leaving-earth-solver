@@ -2,11 +2,11 @@ from z3 import Optimize, Int, Or, If, unsat
 from .util import required, thrust, mass, cost, ION_COST, ION_WEIGHT
 
 DEFAULT_COMPONENT_MAX=8
-DEFAULT_TIME_MAX=16
+DEFAULT_TIME_MAX=12
 RNG=(0,DEFAULT_COMPONENT_MAX)
 
 class Planner():
-    def __init__(self, load=1, juno=RNG, atlas=RNG, soyuz=RNG, proton=RNG, saturn=RNG, ion=RNG, time=RNG, cost=None, free_ions=0, rendezvous=True):
+    def __init__(self, load=1, juno=RNG, atlas=RNG, soyuz=RNG, proton=RNG, saturn=RNG, ion=RNG, time=RNG, year=None, cost=None, free_ions=0, rendezvous=True):
         self.load = load
         self.juno = juno
         self.atlas = atlas
@@ -16,19 +16,13 @@ class Planner():
         self.cost = cost
         self.ion = ion
         self.free_ions = free_ions
-        self.time = time
         self.rendezvous = rendezvous
-
-    #def _find_ion_attach_maneuvers(self, route):
-    #    if self.rendezvous:
-    #        print(route)
-    #        idx = None
-    #        for i, maneuver in enumerate(route):
-    #            if maneuver.src == self.ion_attach_point:
-    #                idx = i
-    #        if idx is not None:
-    #            return route[idx+1:]
-    #    return []
+        
+        self.year = year
+        if self.year:
+            self.time = (0, self.year - 1956)
+        else:
+            self.time = time
 
     def _find_ion_detach_maneuvers(self, route):
         if self.rendezvous:
@@ -80,11 +74,17 @@ class Planner():
             solver.add(proton>=0, proton<=self.proton[1])
             solver.add(saturn>=0, saturn<=self.saturn[1])
 
+            slingshot = maneuver.slingshot
             if maneuver.time is False:
                 solver.add(time==0)
+            elif slingshot and self.year:
+                solver.add(time==maneuver.time)
+                available_years = []
+                for year in slingshot:
+                    available_years.append(t_time+maneuver.time==self.year-year)
+                solver.add(Or(*available_years))
             else:
                 solver.add(time>=maneuver.time)
-                solver.add(Or(ion>0, time==maneuver.time))
 
             if maneuver in ion_detach_maneuvers:
                 solver.add(thrust(juno, atlas, soyuz, proton, saturn, ion, time) >= required(juno, atlas, soyuz, proton, saturn, 0, d, t_load))
@@ -161,6 +161,8 @@ class Planner():
                     else:
                         components[component] = count
 
+        prev_time = 0
+        start_year = self.year - t_time
         for i, stage in enumerate(route):
             ions = components.get("ion", 0)
             if ion_detach_maneuvers and stage == ion_detach_maneuvers[0] and ions > 0:
@@ -168,6 +170,13 @@ class Planner():
             elif "time" in plan[i] and ions > 0:
                 plan[i]["components"]["ion"] = ions
             plan[i]["thrust"] = thrust(**plan[i]["components"], time=int(plan[i].get("time", 0)))
+            if self.year:
+                plan[i]["year"] = start_year + prev_time
+                prev_time += plan[i].get("time", 0)
+
+        if self.year:
+            mission["start"] = start_year
+            mission["end"] = self.year
 
         t_cost = cost(**components, free_ions=self.free_ions)
         t_mass = mass(**components)

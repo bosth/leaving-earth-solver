@@ -1,4 +1,8 @@
 Locations = {}
+JUPITER_SLINGSHOT = range(1956, 1987, 2)
+SATURN_SLINGSHOT = range(1957, 1987, 3)
+URANUS_SLINGSHOT = range(1957, 1987, 5)
+NEPTUNE_SLINGSHOT = range(1958, 1987, 6)
 
 class _Location:
     def __init__(self, name, code):
@@ -49,8 +53,6 @@ def create_location(name, code):
     Locations[code] = l
 
 def connect_locations(l1, l2, diff, time=False, ab_diff=None, ab_time=False, slingshot=None):
-    if slingshot:
-        return
     l1 = Locations[l1]
     l2 = Locations[l2]
     maneuver = l1.connect(l2, diff, time=time, ab_diff=ab_diff, ab_time=ab_time, slingshot=slingshot)
@@ -128,7 +130,7 @@ connect_locations("Mc",  "Mo",   3, time=0, ab_diff=0)
 connect_locations("Mfb", "M",    3)
 connect_locations("Mfb", "Mo",   3, time=0, ab_diff=1)
 connect_locations("Mfb", "ipt",  1, time=2)
-connect_locations("Mfb", "Jfb",  4, time=3, slingshot="J")
+connect_locations("Mfb", "Jfb",  4, time=3, slingshot=JUPITER_SLINGSHOT)
 connect_locations("Mo",  "Eo",   5, time=3)
 connect_locations("Mo",  "M",    0)
 connect_locations("Mo",  "Mc",   3, time=0)
@@ -140,7 +142,7 @@ connect_locations("V",   "Vo",   6)
 connect_locations("Vfb", "V",    1)
 connect_locations("Vfb", "Vo",   1, time=0, ab_diff=0)
 connect_locations("Vfb", "ipt",  1, time=3)
-connect_locations("Vfb", "Jfb",  1, time=1, slingshot="J")
+connect_locations("Vfb", "Jfb",  1, time=1, slingshot=JUPITER_SLINGSHOT)
 connect_locations("Vo",  "V",    0)
 connect_locations("Vo",  "ipt",  3, time=1)
 connect_locations("Vo",  "opt",  9, time=1)
@@ -153,12 +155,12 @@ connect_locations("ipt", "Vfb",  2, time=1)
 connect_locations("ipt", "Vo",   3, time=1)
 connect_locations("opt", "C",    3, time=1)
 connect_locations("opt", "Mo",   5, time=1, ab_diff=2, ab_time=1)
-connect_locations("opt", "Jfb",  4, time=2, slingshot="J")
+connect_locations("opt", "Jfb",  4, time=2, slingshot=JUPITER_SLINGSHOT)
 connect_locations("opt", "Sfb",  3, time=3)
 connect_locations("opt", "Ufb",  4, time=9)
 connect_locations("opt", "Eo",   6, time=1, ab_diff=1, ab_time=1)
 connect_locations("Jfb", "Jo",  10, time=0, ab_diff=3)
-connect_locations("Jfb", "Sfb",  0, time=2, slingshot="S")
+connect_locations("Jfb", "Sfb",  0, time=2, slingshot=SATURN_SLINGSHOT)
 connect_locations("Jfb", "opt",  4, time=2)
 connect_locations("G",   "Go",   2)
 connect_locations("I",   "Jo",   2, time=0)
@@ -169,7 +171,7 @@ connect_locations("Jo",  "I",    2, time=0)
 connect_locations("Jo",  "Go",   3, time=0)
 connect_locations("Jo",  "W",    2, time=0)
 connect_locations("Jo",  "K",    5, time=0)
-connect_locations("Sfb", "Ufb",  0, time=5, slingshot="U")
+connect_locations("Sfb", "Ufb",  0, time=5, slingshot=URANUS_SLINGSHOT)
 connect_locations("Sfb", "So",   7, time=0, ab_diff=1)
 connect_locations("Sfb", "opt",  3, time=3)
 connect_locations("To",  "So",   2, time=0)
@@ -183,5 +185,5 @@ connect_locations("So",  "To",   2, time=0, ab_diff=1)
 connect_locations("So",  "T",    1)
 connect_locations("So",  "D",    2, time=0)
 connect_locations("D",   "So",   2, time=0)
-connect_locations("Ufb", "Nfb",  0, time=4, slingshot="N")
+connect_locations("Ufb", "Nfb",  0, time=4, slingshot=NEPTUNE_SLINGSHOT)
 connect_locations("Ufb", "opt",  4, time=9)

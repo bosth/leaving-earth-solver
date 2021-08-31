@@ -1,4 +1,6 @@
 import click
+from cloup import option, option_group
+from cloup.constraints import mutually_exclusive
 from les import __version__
 from les import Planner, find_best_paths, Locations, DEFAULT_COMPONENT_MAX, DEFAULT_TIME_MAX
 import logging
@@ -61,7 +63,6 @@ def find_best(missions, minimize):
 @click.option("-p", "--proton", type=Range(), default="0-{}".format(DEFAULT_COMPONENT_MAX), help="Number of Proton rockets")
 @click.option("-n", "--saturn", type=Range(), default="0-{}".format(DEFAULT_COMPONENT_MAX), help="Number of Saturn rockets")
 @click.option("-i", "--ion", type=Range(), default="0-{}".format(DEFAULT_COMPONENT_MAX), help="Number of Ion thrusters")
-@click.option("-y", "--time", type=Range(), default="0-{}".format(DEFAULT_TIME_MAX), help="Number of time tokens")
 @click.option("-c", "--cost", type=Range(), default=None, help="Cost of mission")
 @click.option("--free-ions", type=click.IntRange(min=0), default=0, help="Number of Ion thrusters available at the origin")
 @click.option("-m", "--minimize", type=click.Choice(["time","cost","mass"], case_sensitive=False), default="cost", help="Minimization goal")
@@ -71,7 +72,13 @@ def find_best(missions, minimize):
 @click.argument("orig", required=True, metavar="ORIGIN")
 @click.argument("dest", required=True, metavar="DESTINATION")
 @click.argument("payload", type=click.IntRange(min=1, max=None), default=1)
-def cli(verbose, juno, atlas, soyuz, proton, saturn, ion, time, cost, free_ions, minimize, routes, one_stage, rendezvous, orig, dest, payload):
+@option_group(
+    "Travel time",
+    option("-t", "--time", type=Range(), default="0-{}".format(DEFAULT_TIME_MAX), help="Number of time tokens"),
+    option("-y", "--year", type=click.IntRange(min=1956, max=1986), default=None, help="Year to arrive by"),
+    constraint=mutually_exclusive
+)
+def cli(verbose, juno, atlas, soyuz, proton, saturn, ion, cost, free_ions, minimize, routes, one_stage, rendezvous, orig, dest, payload, time, year):
     """
     """
     try:
@@ -85,7 +92,7 @@ def cli(verbose, juno, atlas, soyuz, proton, saturn, ion, time, cost, free_ions,
         for code, name in Locations.items():
             print(code.rjust(4), ": ", name, sep="")
         exit(1)
-    planner = Planner(load=payload, juno=juno, atlas=atlas, soyuz=soyuz, proton=proton, saturn=saturn, ion=ion, time=time, cost=cost, free_ions=free_ions, rendezvous=rendezvous)
+    planner = Planner(load=payload, juno=juno, atlas=atlas, soyuz=soyuz, proton=proton, saturn=saturn, ion=ion, time=time, year=year, cost=cost, free_ions=free_ions, rendezvous=rendezvous)
     paths = find_best_paths(orig, dest, path_filter=routes, one_stage=one_stage)
     missions = [planner.plan(path, minimize=minimize) for path in paths]
     missions = find_best(missions, minimize)

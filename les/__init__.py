@@ -25,7 +25,7 @@ def find_best_paths(src, dst, path_filter="optimal", one_stage=False):
     paths = add_path_stats(paths)
     paths = sorted(paths, key=lambda i: i[0]) # sort by total difficulty
     if path_filter != "all":
-            threshold = paths[0][0] * 1.2 # allow slightly higher difficulty paths than the least difficult
+            threshold = paths[0][0] * 1.1 # allow slightly higher difficulty paths than the least difficult
             paths = [p for p in paths if p[0] <= threshold]
             paths = sorted(paths, key=lambda i: i[1]) # sort by stdev/mean or whatever technique we used for stats
             if path_filter == "one":
