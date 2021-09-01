@@ -94,7 +94,7 @@ def cli(verbose, juno, atlas, soyuz, proton, saturn, ion, cost, free_ions, minim
         exit(1)
     planner = Planner(load=payload, juno=juno, atlas=atlas, soyuz=soyuz, proton=proton, saturn=saturn, ion=ion, time=time, year=year, cost=cost, free_ions=free_ions, rendezvous=rendezvous)
     paths = find_best_paths(orig, dest, path_filter=routes, one_stage=one_stage)
-    missions = [planner.plan(path, minimize=minimize) for path in paths]
+    missions = [planner.plan(path, minimize=minimize, slingshot=year) for path in paths]
     missions = find_best(missions, minimize)
     if missions:
         print(json.dumps(missions[0], indent=4))

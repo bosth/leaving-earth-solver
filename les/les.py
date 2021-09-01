@@ -37,7 +37,6 @@ class Planner():
 
     def _plan(self, route, minimize=None):
         solver = Optimize()
-        print(route)
 
         route = route.copy()
         route.reverse() # always plan backwards
@@ -129,7 +128,9 @@ class Planner():
         else:
             return solver.model(), ion_detach_maneuvers
 
-    def plan(self, route, minimize=None):
+    def plan(self, route, minimize=None, slingshot=False):
+        if not slingshot and any(r.slingshot for r in route):
+            return []
         model, ion_detach_maneuvers = self._plan(route, minimize)
         if model is None:
             return model
@@ -173,6 +174,7 @@ class Planner():
             if self.year:
                 plan[i]["year"] = self.year - t_time + prev_time
                 prev_time += plan[i].get("time", 0)
+            plan[i]["slingshot"] = stage.slingshot is not None
 
         if self.year:
             mission["start"] = self.year - t_time
