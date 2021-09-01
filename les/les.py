@@ -37,6 +37,7 @@ class Planner():
 
     def _plan(self, route, minimize=None):
         solver = Optimize()
+        print(route)
 
         route = route.copy()
         route.reverse() # always plan backwards
@@ -162,7 +163,6 @@ class Planner():
                         components[component] = count
 
         prev_time = 0
-        start_year = self.year - t_time
         for i, stage in enumerate(route):
             ions = components.get("ion", 0)
             if ion_detach_maneuvers and stage == ion_detach_maneuvers[0] and ions > 0:
@@ -171,11 +171,11 @@ class Planner():
                 plan[i]["components"]["ion"] = ions
             plan[i]["thrust"] = thrust(**plan[i]["components"], time=int(plan[i].get("time", 0)))
             if self.year:
-                plan[i]["year"] = start_year + prev_time
+                plan[i]["year"] = self.year - t_time + prev_time
                 prev_time += plan[i].get("time", 0)
 
         if self.year:
-            mission["start"] = start_year
+            mission["start"] = self.year - t_time
             mission["end"] = self.year
 
         t_cost = cost(**components, free_ions=self.free_ions)

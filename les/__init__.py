@@ -15,7 +15,7 @@ def add_path_stats(paths):
     diffs = [sum(m.diff for m in p) for p in paths]
     stats = []
     for p in paths:
-        stats.append(statistics.mean([m.diff for m in p]))
+        stats.append(statistics.mean([float(m.diff) for m in p]) * len(p)**2)
     return zip(diffs, stats, paths)
 
 def find_best_paths(src, dst, path_filter="optimal", one_stage=False):
@@ -23,10 +23,7 @@ def find_best_paths(src, dst, path_filter="optimal", one_stage=False):
     if not paths:
         return []
     paths = add_path_stats(paths)
-    paths = sorted(paths, key=lambda i: i[0]) # sort by total difficulty
     if path_filter != "all":
-            threshold = paths[0][0] * 1.1 # allow slightly higher difficulty paths than the least difficult
-            paths = [p for p in paths if p[0] <= threshold]
             paths = sorted(paths, key=lambda i: i[1]) # sort by stdev/mean or whatever technique we used for stats
             if path_filter == "one":
                 paths = paths[:1]
