@@ -1,6 +1,4 @@
 import click
-from cloup import option, option_group
-from cloup.constraints import mutually_exclusive
 from les import __version__
 from les import Planner, find_best_paths, Locations, DEFAULT_COMPONENT_MAX
 import logging
@@ -11,6 +9,8 @@ log = logging.getLogger("les")
 class Range(click.ParamType):
     name = "range"
     def convert(self, value, param, ctx):
+        if isinstance(value, tuple):
+            return value
         if value is None:
             return None
         m = re.match("^[0-9]*$", value) # exact number
@@ -72,12 +72,8 @@ def find_best(missions, minimize):
 @click.argument("orig", required=True, metavar="ORIGIN")
 @click.argument("dest", required=True, metavar="DESTINATION")
 @click.argument("payload", type=click.IntRange(min=1, max=None), default=1)
-@option_group(
-    "Travel time",
-    option("-t", "--time", type=Range(), default=None, help="Number of time tokens"),
-    option("-y", "--year", type=click.IntRange(min=1956, max=1986), default=None, help="Year to arrive by"),
-    constraint=mutually_exclusive
-)
+@click.option("-t", "--time", type=Range(), default=None, help="Number of time tokens")
+@click.option("-y", "--year", type=click.IntRange(min=1956, max=1986), default=None, help="Year to arrive by")
 def cli(verbose, juno, atlas, soyuz, proton, saturn, ion, cost, free_ions, minimize, routes, one_stage, rendezvous, orig, dest, payload, time, year):
     """
     """
