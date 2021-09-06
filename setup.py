@@ -6,7 +6,7 @@ from les.__version__ import __version__
 long_description = """
 """
 
-install_requires = ["click", "z3-solver"]
+install_requires = ["click", "z3"]
 
 setup(name="les",
       version=__version__,
