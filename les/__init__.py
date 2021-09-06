@@ -1,7 +1,7 @@
 from .__version__ import __version__
-from .les import Planner, DEFAULT_COMPONENT_MAX, DEFAULT_TIME_MAX
+from .les import Planner, DEFAULT_COMPONENT_MAX
 from .location import Locations, EEso, EEo, EsoEo
-import statistics
+from math import sqrt
 
 def build_route(route):
     it = iter(route)
@@ -12,24 +12,30 @@ def build_route(route):
         src = dst
 
 def add_path_stats(paths):
-    diffs = [sum(m.diff for m in p) for p in paths]
     stats = []
     for p in paths:
-        stats.append(statistics.mean([float(m.diff) for m in p]) * len(p)**2)
-    return zip(diffs, stats, paths)
+        p = [m.diff for m in p if m not in [EEso, EsoEo, EEo]]
+        diffs = [sqrt(i+1.0)*(d+1.0) for i, d in enumerate(p)]
+        stats.append(sum(diffs))
+    return zip(stats, paths)
 
 def find_best_paths(src, dst, path_filter="optimal", one_stage=False):
     paths = find_paths(src, dst, one_stage)
     if not paths:
         return []
     paths = add_path_stats(paths)
+    paths = sorted(paths, key=lambda i: i[0]) # sort by stdev/mean or whatever technique we used for stats
     if path_filter != "all":
-            paths = sorted(paths, key=lambda i: i[1]) # sort by stdev/mean or whatever technique we used for stats
             if path_filter == "one":
                 paths = paths[:1]
             elif path_filter == "two":
                 paths = paths[:2]
-    paths = [p[2] for p in paths]
+            elif path_filter == "optimal":
+                threshold = paths[0][0] * 1.125 # allow slightly higher difficulty paths than the least difficult
+                paths = [p for p in paths if p[0] <= threshold]
+    #for p in paths:
+    #    print(p)
+    paths = [p[1] for p in paths]
     if one_stage:
         two_stage_paths = []
         for p in paths:

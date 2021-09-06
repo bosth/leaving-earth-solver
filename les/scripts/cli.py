@@ -2,7 +2,7 @@ import click
 from cloup import option, option_group
 from cloup.constraints import mutually_exclusive
 from les import __version__
-from les import Planner, find_best_paths, Locations, DEFAULT_COMPONENT_MAX, DEFAULT_TIME_MAX
+from les import Planner, find_best_paths, Locations, DEFAULT_COMPONENT_MAX
 import logging
 import re
 import json
@@ -74,7 +74,7 @@ def find_best(missions, minimize):
 @click.argument("payload", type=click.IntRange(min=1, max=None), default=1)
 @option_group(
     "Travel time",
-    option("-t", "--time", type=Range(), default="0-{}".format(DEFAULT_TIME_MAX), help="Number of time tokens"),
+    option("-t", "--time", type=Range(), default=None, help="Number of time tokens"),
     option("-y", "--year", type=click.IntRange(min=1956, max=1986), default=None, help="Year to arrive by"),
     constraint=mutually_exclusive
 )

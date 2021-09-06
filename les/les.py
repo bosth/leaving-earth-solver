@@ -2,11 +2,10 @@ from z3 import Optimize, Int, Or, If, unsat
 from .util import required, thrust, mass, cost, ION_COST, ION_WEIGHT
 
 DEFAULT_COMPONENT_MAX=8
-DEFAULT_TIME_MAX=12
 RNG=(0,DEFAULT_COMPONENT_MAX)
 
 class Planner():
-    def __init__(self, load=1, juno=RNG, atlas=RNG, soyuz=RNG, proton=RNG, saturn=RNG, ion=RNG, time=RNG, year=None, cost=None, free_ions=0, rendezvous=True):
+    def __init__(self, load=1, juno=RNG, atlas=RNG, soyuz=RNG, proton=RNG, saturn=RNG, ion=RNG, time=None, year=None, cost=None, free_ions=0, rendezvous=True):
         self.load = load
         self.juno = juno
         self.atlas = atlas
@@ -20,9 +19,15 @@ class Planner():
         
         self.year = year
         if self.year:
-            self.time = (0, self.year - 1956)
+            if time is not None:
+                self.time = (min(year-1956, time[0]), min(year-1956, time[1]))
+            else:
+                self.time = (0, self.year - 1956)
         else:
-            self.time = time
+            if time is None:
+                self.time = (0, 1986 - 1956)
+            else:
+                self.time = time
 
     def _find_ion_detach_maneuvers(self, route):
         if self.rendezvous:
