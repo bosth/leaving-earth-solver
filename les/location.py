@@ -1,8 +1,8 @@
 Locations = {}
-JUPITER_SLINGSHOT = range(1956, 1987, 2)
-SATURN_SLINGSHOT = range(1957, 1987, 3)
-URANUS_SLINGSHOT = range(1957, 1987, 5)
-NEPTUNE_SLINGSHOT = range(1958, 1987, 6)
+JUPITER_SLINGSHOT = range(1956, 1986, 2)
+SATURN_SLINGSHOT = range(1957, 1986, 3)
+URANUS_SLINGSHOT = range(1957, 1986, 5)
+NEPTUNE_SLINGSHOT = range(1958, 1986, 6)
 
 class _Location:
     def __init__(self, name, code):

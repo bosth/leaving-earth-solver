@@ -73,7 +73,6 @@ class Planner():
         a_time = IntVector("time", len(route))
         if self.year:
             a_year = IntVector("year", len(route))
-            solver.minimize(a_year[0]) # prefer the soonest arrival date
 
         # ions are allocated per mission not per segment
         ion = Int("ion")
@@ -109,7 +108,7 @@ class Planner():
                 if maneuver.get_time(self.aerobraking) is False:
                     solver.add(time==0)
                     if i == len(route) - 1:
-                        solver.add(a_year[i]==self.year)
+                        solver.add(a_year[i]>=self.year)
                     else:
                         solver.add(a_year[i]==a_year[i+1])
                 else:
@@ -117,12 +116,13 @@ class Planner():
                         solver.add(time==maneuver.get_time(self.aerobraking))
                         available_years = []
                         for available_year in maneuver.slingshot:
-                            available_years.append(a_year[i]==available_year)
+                            if available_year >= self.year and available_year <= self.year + self.time[1]:
+                                available_years.append(a_year[i]==available_year)
                         solver.add(Or(*available_years))
                     else:
                         solver.add(time>=maneuver.get_time(self.aerobraking))
                     if i == len(route) - 1:
-                        solver.add(a_year[i]==self.year)
+                        solver.add(a_year[i]>=self.year)
                     else:
                         solver.add(a_year[i]==a_year[i+1]+a_time[i+1])
             else:
@@ -167,6 +167,9 @@ class Planner():
             solver.minimize(t_cost)
             solver.minimize(t_time)
             solver.minimize(t_load)
+        if self.year:
+            solver.minimize(a_year[0]) # prefer the soonest arrival date
+            solver.maximize(a_year[len(route)-1])
 
         if solver.check() == unsat:
             return None, None
@@ -199,8 +202,6 @@ class Planner():
                 i = int(i)
                 if key == "year" and i == len(route):
                     continue
-                else:
-                    pass#i = i - 1
 
                 stage = plan[i]
                 if key == "time":
@@ -229,8 +230,8 @@ class Planner():
         plan = list(reversed(plan))
 
         if self.year:
-            mission["start"] = self.year
-            mission["end"] = self.year + t_time
+            mission["start"] = plan[0]["year"]
+            mission["end"] = plan[-1]["year"] + plan[-1]["time"]
 
         t_cost = cost(**components, free_ions=self.free_ions)
         t_mass = mass(**components)
