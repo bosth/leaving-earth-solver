@@ -37,16 +37,25 @@ class _Maneuver:
         self.slingshot = slingshot
 
     def get_diff(self, aerobraking=False):
-        if aerobraking and self.ab_diff:
+        if aerobraking and self.ab_diff is not None:
             return self.ab_diff
         else:
             return self.diff
+
+    def get_time(self, aerobraking=False):
+        if aerobraking and self.ab_diff is not None:
+            return self.ab_time
+        else:
+            return self.time
 
     def __str__(self):
         return "{}->{}".format(self.src, self.dst)
 
     def __repr__(self):
-        return "{}-({})->{}".format(self.src.code, self.diff, self.dst.code)
+        if self.time is not False:
+            return "{}-({}/{})->{}".format(self.src.code, self.diff, self.time, self.dst.code)
+        else:
+            return "{}-({})->{}".format(self.src.code, self.diff, self.dst.code)
 
 def create_location(name, code):
     l = _Location(name, code)

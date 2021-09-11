@@ -66,15 +66,16 @@ def find_best(missions, minimize):
 @click.option("-c", "--cost", type=Range(), default=None, help="Cost of mission")
 @click.option("--free-ions", type=click.IntRange(min=0), default=0, help="Number of Ion thrusters available at the origin")
 @click.option("-m", "--minimize", type=click.Choice(["time","cost","mass"], case_sensitive=False), default="cost", help="Minimization goal")
-@click.option("--routes", type=click.Choice(["optimal","all","one", "two"], case_sensitive=False), default="two", help="Which routes to try when there are multiple options")
-@click.option("--one-stage", is_flag=True, help="Always check a single stage configuration for launches from Earth (by default assume a two-stage configuration)")
+@click.option("--routes", type=click.Choice(["optimal","all"]+[str(i) for i in range(1,32)], case_sensitive=False), default="optimal", help="Which routes to try when there are multiple options")
+@click.option("--single-stage", is_flag=True, help="Check a single stage configuration for launches from Earth (by default only a two-stage configuration will be attempted)")
+@click.option("--aerobraking/--no-aerobraking", is_flag=True, help="Use aerobraking")
 @click.option("--rendezvous/--no-rendezvous", default=True, help="If rendezvous technology is available, Ion thrusters will be detached when no longer needed")
 @click.argument("orig", required=True, metavar="ORIGIN")
 @click.argument("dest", required=True, metavar="DESTINATION")
 @click.argument("payload", type=click.IntRange(min=1, max=None), default=1)
 @click.option("-t", "--time", type=Range(), default=None, help="Number of time tokens")
-@click.option("-y", "--year", type=click.IntRange(min=1956, max=1986), default=None, help="Year to arrive by")
-def cli(verbose, juno, atlas, soyuz, proton, saturn, ion, cost, free_ions, minimize, routes, one_stage, rendezvous, orig, dest, payload, time, year):
+@click.option("-y", "--year", type=click.IntRange(min=1956, max=1986), default=None, help="Year that journey starts")
+def cli(verbose, juno, atlas, soyuz, proton, saturn, ion, cost, free_ions, minimize, routes, single_stage, aerobraking, rendezvous, orig, dest, payload, time, year):
     """
     """
     try:
@@ -88,8 +89,8 @@ def cli(verbose, juno, atlas, soyuz, proton, saturn, ion, cost, free_ions, minim
         for code, name in Locations.items():
             print(code.rjust(4), ": ", name, sep="")
         exit(1)
-    planner = Planner(load=payload, juno=juno, atlas=atlas, soyuz=soyuz, proton=proton, saturn=saturn, ion=ion, time=time, year=year, cost=cost, free_ions=free_ions, rendezvous=rendezvous)
-    paths = find_best_paths(orig, dest, path_filter=routes, one_stage=one_stage)
+    planner = Planner(load=payload, juno=juno, atlas=atlas, soyuz=soyuz, proton=proton, saturn=saturn, ion=ion, time=time, year=year, cost=cost, free_ions=free_ions, rendezvous=rendezvous, aerobraking=aerobraking)
+    paths = find_best_paths(orig, dest, path_filter=routes, single_stage=single_stage, aerobraking=aerobraking)
     missions = [planner.plan(path, minimize=minimize, slingshot=year) for path in paths]
     missions = find_best(missions, minimize)
     if missions:

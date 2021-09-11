@@ -1,11 +1,11 @@
-from z3 import Optimize, Int, Or, If, unsat
+from z3 import Optimize, Int, Or, If, unsat, IntVector
 from .util import required, thrust, mass, cost, ION_COST, ION_WEIGHT
 
 DEFAULT_COMPONENT_MAX=8
 RNG=(0,DEFAULT_COMPONENT_MAX)
 
 class Planner():
-    def __init__(self, load=1, juno=RNG, atlas=RNG, soyuz=RNG, proton=RNG, saturn=RNG, ion=RNG, time=None, year=None, cost=None, free_ions=0, rendezvous=True):
+    def __init__(self, load=1, juno=RNG, atlas=RNG, soyuz=RNG, proton=RNG, saturn=RNG, ion=RNG, time=None, year=None, cost=None, free_ions=0, rendezvous=True, aerobraking=False):
         self.load = load
         self.juno = juno
         self.atlas = atlas
@@ -16,36 +16,64 @@ class Planner():
         self.ion = ion
         self.free_ions = free_ions
         self.rendezvous = rendezvous
+        self.aerobraking = aerobraking
         
         self.year = year
         if self.year:
-            if time is not None:
-                self.time = (min(year-1956, time[0]), min(year-1956, time[1]))
+            # limit the total journey time by the starting year that the user provided
+            if time is None:
+                self.time = (0, 1986-self.year)
             else:
-                self.time = (0, self.year - 1956)
+                self.time = (min(1986-year, time[0]), 
+                             min(1986-year, time[1]))
         else:
             if time is None:
                 self.time = (0, 1986 - 1956)
             else:
                 self.time = time
 
+    """
+    Find the point in the route where ions can be detached, i.e. when all remaining maneuvers can not take time.
+    """
     def _find_ion_detach_maneuvers(self, route):
         if self.rendezvous:
             rendezvous_actions = []
             for maneuver in route:
-                if maneuver.time is False:
+                if maneuver.get_time(self.aerobraking) is False:
                     rendezvous_actions.append(maneuver)
                 else:
                     rendezvous_actions.reverse()
                     return rendezvous_actions
         return []
 
+    """
+    Check if there are any slingshot maneuvers in this route.
+    """
+    def _find_slingshot_maneuvers(self, route):
+        for manuever in route:
+            if manuever.slingshot:
+                return True
+        return False
+
     def _plan(self, route, minimize=None):
         solver = Optimize()
 
-        route = route.copy()
-        route.reverse() # always plan backwards
         ion_detach_maneuvers = self._find_ion_detach_maneuvers(route)
+        slingshot_maneuvers = self._find_slingshot_maneuvers(route)
+        if slingshot_maneuvers:
+            if not self.year:
+                #raise Exception("To perform a slingshot maneuver, a starting year must be specified.")
+                return None, None
+
+        a_juno = IntVector("juno", len(route))
+        a_atlas = IntVector("atlas", len(route))
+        a_soyuz = IntVector("soyuz", len(route))
+        a_proton = IntVector("proton", len(route))
+        a_saturn = IntVector("saturn", len(route))
+        a_time = IntVector("time", len(route))
+        if self.year:
+            a_year = IntVector("year", len(route))
+            solver.minimize(a_year[0]) # prefer the soonest arrival date
 
         # ions are allocated per mission not per segment
         ion = Int("ion")
@@ -61,17 +89,15 @@ class Planner():
         t_load = self.load
         t_cost = If(self.free_ions>ion, 0, (ion-self.free_ions)*ION_COST)
         t_time = 0
-
-        # add rules for each segment
+        # add rules for each maneuver (0 is the last maneuver in the route)
         for i, maneuver in enumerate(route):
-            i = len(route) - i
-            d = maneuver.diff
-            juno = Int("juno_{}".format(i))
-            atlas = Int("atlas_{}".format(i))
-            soyuz = Int("soyuz_{}".format(i))
-            proton = Int("proton_{}".format(i))
-            saturn = Int("saturn_{}".format(i))
-            time = Int("time_{}".format(i))
+            d = maneuver.get_diff(self.aerobraking)
+            juno = a_juno[i]
+            atlas = a_atlas[i]
+            soyuz = a_soyuz[i]
+            proton = a_proton[i]
+            saturn = a_saturn[i]
+            time = a_time[i]
 
             solver.add(juno>=0, juno<=self.juno[1]) 
             solver.add(atlas>=0, atlas<=self.atlas[1])
@@ -79,17 +105,31 @@ class Planner():
             solver.add(proton>=0, proton<=self.proton[1])
             solver.add(saturn>=0, saturn<=self.saturn[1])
 
-            slingshot = maneuver.slingshot
-            if maneuver.time is False:
-                solver.add(time==0)
-            elif slingshot and self.year:
-                solver.add(time==maneuver.time)
-                available_years = []
-                for year in slingshot:
-                    available_years.append(t_time+maneuver.time==self.year-year)
-                solver.add(Or(*available_years))
+            if slingshot_maneuvers or self.year:
+                if maneuver.get_time(self.aerobraking) is False:
+                    solver.add(time==0)
+                    if i == len(route) - 1:
+                        solver.add(a_year[i]==self.year)
+                    else:
+                        solver.add(a_year[i]==a_year[i+1])
+                else:
+                    if maneuver.slingshot: # slingshots have fixed duration
+                        solver.add(time==maneuver.get_time(self.aerobraking))
+                        available_years = []
+                        for available_year in maneuver.slingshot:
+                            available_years.append(a_year[i]==available_year)
+                        solver.add(Or(*available_years))
+                    else:
+                        solver.add(time>=maneuver.get_time(self.aerobraking))
+                    if i == len(route) - 1:
+                        solver.add(a_year[i]==self.year)
+                    else:
+                        solver.add(a_year[i]==a_year[i+1]+a_time[i+1])
             else:
-                solver.add(time>=maneuver.time)
+                if maneuver.get_time(self.aerobraking) is False:
+                    solver.add(time==0)
+                else:
+                    solver.add(time>=maneuver.get_time(self.aerobraking))
 
             if maneuver in ion_detach_maneuvers:
                 solver.add(thrust(juno, atlas, soyuz, proton, saturn, ion, time) >= required(juno, atlas, soyuz, proton, saturn, 0, d, t_load))
@@ -134,41 +174,49 @@ class Planner():
             return solver.model(), ion_detach_maneuvers
 
     def plan(self, route, minimize=None, slingshot=False):
-        if not slingshot and any(r.slingshot for r in route):
-            return []
+        route = list(reversed(route))
         model, ion_detach_maneuvers = self._plan(route, minimize)
         if model is None:
             return model
         plan = []
-        for i, stage in enumerate(route):
-            plan.append({"origin": stage.src.name, "destination": stage.dst.name, "difficulty": stage.diff, "components": {}})
+        for maneuver in route:
+            if self.aerobraking and maneuver.ab_diff is not None:
+                plan.append({"origin": maneuver.src.name, "destination": maneuver.dst.name, "difficulty": maneuver.ab_diff, "components": {}, "aerobraking": True})
+            else:
+                plan.append({"origin": maneuver.src.name, "destination": maneuver.dst.name, "difficulty": maneuver.diff, "components": {}, "aerobraking": False})
         components = {}
         t_time = 0
         mission = {}
         ions = 0
-        for i in model:
-            component = i.name()
-            count = model[i].as_long()
+        for key in model:
+            val = model[key].as_long()
+            key = key.name()
 
-            if component == "ion" and count:
-                components[component] = count
-            elif count:
-                component, stageid = tuple(component.split("_"))
-                stageid = int(stageid) - 1
-                stage = plan[stageid]
-                if component == "time":
-                    stage["time"] = count
-                    t_time += count
+            if key == "ion" and val > 0:
+                components[key] = val
+            elif val > 0:
+                key, i = tuple(key.split("__"))
+                i = int(i)
+                if key == "year" and i == len(route):
+                    continue
+                else:
+                    pass#i = i - 1
+
+                stage = plan[i]
+                if key == "time":
+                    stage["time"] = val
+                    t_time += val
+                elif key == "year":
+                    stage["year"] = val
                 else:
                     c = stage.get("components", {})
-                    c[component] = count
+                    c[key] = val
                     stage["components"] = c
-                    if components.get(component):
-                        components[component] += count
+                    if components.get(key):
+                        components[key] += val
                     else:
-                        components[component] = count
+                        components[key] = val
 
-        prev_time = 0
         for i, stage in enumerate(route):
             ions = components.get("ion", 0)
             if ion_detach_maneuvers and stage == ion_detach_maneuvers[0] and ions > 0:
@@ -176,14 +224,13 @@ class Planner():
             elif "time" in plan[i] and ions > 0:
                 plan[i]["components"]["ion"] = ions
             plan[i]["thrust"] = thrust(**plan[i]["components"], time=int(plan[i].get("time", 0)))
-            if self.year:
-                plan[i]["year"] = self.year - t_time + prev_time
-                prev_time += plan[i].get("time", 0)
             plan[i]["slingshot"] = stage.slingshot is not None
 
+        plan = list(reversed(plan))
+
         if self.year:
-            mission["start"] = self.year - t_time
-            mission["end"] = self.year
+            mission["start"] = self.year
+            mission["end"] = self.year + t_time
 
         t_cost = cost(**components, free_ions=self.free_ions)
         t_mass = mass(**components)
