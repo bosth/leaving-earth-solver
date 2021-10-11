@@ -55,7 +55,7 @@ class Planner():
                 return True
         return False
 
-    def _plan(self, route, minimize=None):
+    def _plan(self, route, minimize=None, minimize_value=None):
         solver = Optimize()
 
         ion_detach_maneuvers = self._find_ion_detach_maneuvers(route)
@@ -159,14 +159,20 @@ class Planner():
             solver.minimize(t_time)
             solver.minimize(t_cost)
             solver.minimize(t_load)
+            if minimize_value is not None:
+                solver.add(t_time <= minimize_value)
         elif minimize == "mass":
             solver.minimize(t_load)
             solver.minimize(t_cost)
             solver.minimize(t_time)
+            if minimize_value is not None:
+                solver.add(t_load <= minimize_value)
         elif minimize == "cost":
             solver.minimize(t_cost)
             solver.minimize(t_time)
             solver.minimize(t_load)
+            if minimize_value is not None:
+                solver.add(t_cost <= minimize_value)
         if self.year:
             solver.minimize(a_year[0]) # prefer the soonest arrival date
             solver.maximize(a_year[len(route)-1])
@@ -176,9 +182,9 @@ class Planner():
         else:
             return solver.model(), ion_detach_maneuvers
 
-    def plan(self, route, minimize=None, slingshot=False):
+    def plan(self, route, minimize=None, minimize_value=None, slingshot=False):
         route = list(reversed(route))
-        model, ion_detach_maneuvers = self._plan(route, minimize)
+        model, ion_detach_maneuvers = self._plan(route, minimize, minimize_value)
         if model is None:
             return model
         plan = []
@@ -231,7 +237,7 @@ class Planner():
 
         if self.year:
             mission["start"] = plan[0]["year"]
-            mission["end"] = plan[-1]["year"] + plan[-1]["time"]
+            mission["end"] = plan[-1]["year"] + plan[-1].get("time", 0)
 
         t_cost = cost(**components, free_ions=self.free_ions)
         t_mass = mass(**components)
