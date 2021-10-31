@@ -1,9 +1,9 @@
 import click
 from les import __version__
 from les import Planner, find_best_paths, Locations, DEFAULT_COMPONENT_MAX
-import logging
 import re
 import json
+import logging
 log = logging.getLogger("les")
 
 class Range(click.ParamType):
@@ -78,29 +78,40 @@ def find_best(missions, minimize):
 def cli(verbose, juno, atlas, soyuz, proton, saturn, ion, cost, free_ions, minimize, routes, single_stage, aerobraking, rendezvous, orig, dest, payload, time, year):
     """
     """
+    if verbose:
+        logging.basicConfig(level=logging.DEBUG)
+
     try:
         if orig == dest:
-            print("Origin and destination may not be the same.")
+            log.error("Origin and destination may not be the same.")
             exit(1)
         orig = Locations[orig]
         dest = Locations[dest]
     except KeyError as e:
-        print("Error finding {}. Must be one of the following:".format(e))
+        log.error("Error finding {}. Must be one of the following:".format(e))
         for code, name in Locations.items():
             print(code.rjust(4), ": ", name, sep="")
         exit(1)
     planner = Planner(load=payload, juno=juno, atlas=atlas, soyuz=soyuz, proton=proton, saturn=saturn, ion=ion, time=time, year=year, cost=cost, free_ions=free_ions, rendezvous=rendezvous, aerobraking=aerobraking)
     paths = find_best_paths(orig, dest, path_filter=routes, single_stage=single_stage, aerobraking=aerobraking)
+    log.info("Found {} paths using '{}' strategy".format(len(paths), routes))
 
     missions = []
     minimize_value = None
-    for path in paths:
-        mission = planner.plan(path, minimize=minimize, minimize_value=minimize_value, slingshot=year)
-        if mission:
-            new_mv = mission[minimize]
-            if minimize_value is None or new_mv < minimize_value:
-                minimize_value = new_mv
-            missions.append(mission)
+    try:
+        for path in paths:
+            log.debug("Planning for {}".format(path))
+            mission = planner.plan(path, minimize=minimize, minimize_value=minimize_value, slingshot=year)
+            if mission:
+                new_mv = mission[minimize]
+                log.info("Found solution using {} with value {}".format(path, new_mv))
+                if minimize_value is None or new_mv < minimize_value:
+                    minimize_value = new_mv
+                missions.append(mission)
+            else:
+                log.info("Unable to find a solution using {}".format(path))
+    except Exception as e:
+        log.error(e)
 
     missions = find_best(missions, minimize)
     if missions:

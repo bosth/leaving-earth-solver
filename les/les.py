@@ -1,11 +1,15 @@
 from z3 import Optimize, Int, Or, If, unsat, IntVector
 from .util import required, thrust, mass, cost, ION_COST, ION_WEIGHT
+import logging
+log = logging.getLogger("les")
+
 
 DEFAULT_COMPONENT_MAX=8
 RNG=(0,DEFAULT_COMPONENT_MAX)
 
 class Planner():
     def __init__(self, load=1, juno=RNG, atlas=RNG, soyuz=RNG, proton=RNG, saturn=RNG, ion=RNG, time=None, year=None, cost=None, free_ions=0, rendezvous=True, aerobraking=False):
+        log.debug("Creating planner")
         self.load = load
         self.juno = juno
         self.atlas = atlas
@@ -31,6 +35,7 @@ class Planner():
                 self.time = (0, 1986 - 1956)
             else:
                 self.time = time
+        log.info("Set mission time to between {} and {} years".format(self.time[0], self.time[1]))
 
     """
     Find the point in the route where ions can be detached, i.e. when all remaining maneuvers can not take time.
@@ -61,9 +66,9 @@ class Planner():
         ion_detach_maneuvers = self._find_ion_detach_maneuvers(route)
         slingshot_maneuvers = self._find_slingshot_maneuvers(route)
         if slingshot_maneuvers:
+            log.debug("Found slingshot maneuver")
             if not self.year:
-                #raise Exception("To perform a slingshot maneuver, a starting year must be specified.")
-                return None, None
+                raise Exception("To perform a slingshot maneuver, a starting year must be specified.")
 
         a_juno = IntVector("juno", len(route))
         a_atlas = IntVector("atlas", len(route))
@@ -90,6 +95,7 @@ class Planner():
         t_time = 0
         # add rules for each maneuver (0 is the last maneuver in the route)
         for i, maneuver in enumerate(route):
+            log.debug("Creating constraint for maneuver {}".format(maneuver))
             d = maneuver.get_diff(self.aerobraking)
             juno = a_juno[i]
             atlas = a_atlas[i]
@@ -132,6 +138,7 @@ class Planner():
                     solver.add(time>=maneuver.get_time(self.aerobraking))
 
             if maneuver in ion_detach_maneuvers:
+                log.debug("Maneuver {} is ion detach point".format(maneuver))
                 solver.add(thrust(juno, atlas, soyuz, proton, saturn, ion, time) >= required(juno, atlas, soyuz, proton, saturn, 0, d, t_load))
             else:
                 solver.add(thrust(juno, atlas, soyuz, proton, saturn, ion, time) >= required(juno, atlas, soyuz, proton, saturn, ion, d, t_load))
@@ -155,6 +162,7 @@ class Planner():
         solver.add(t_saturn>=self.saturn[0], t_saturn<=self.saturn[1])
         solver.add(t_time>=self.time[0], t_time<=self.time[1])
 
+        log.debug("Setting optimization target")
         if minimize == "time":
             solver.minimize(t_time)
             solver.minimize(t_cost)
@@ -175,14 +183,18 @@ class Planner():
                 solver.add(t_cost <= minimize_value)
         if self.year:
             solver.minimize(a_year[0]) # prefer the soonest arrival date
-            solver.maximize(a_year[len(route)-1])
+            solver.maximize(a_year[len(route)-1]) # and latest start date
 
+        log.debug("Attempting to find a solution with target {} ...".format(minimize_value))
         if solver.check() == unsat:
+            log.debug("No solution found")
             return None, None
         else:
+            log.debug("Found solution {}".format(solver.model()))
             return solver.model(), ion_detach_maneuvers
 
     def plan(self, route, minimize=None, minimize_value=None, slingshot=False):
+        log.debug("Starting planner for {}".format(route))
         route = list(reversed(route))
         model, ion_detach_maneuvers = self._plan(route, minimize, minimize_value)
         if model is None:
